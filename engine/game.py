@@ -90,7 +90,7 @@ class Game:
             self.current.move(0, 1)
             return True
 
-        self.board.lock(self.current.cells())
+        self.board.lock(self.current.cells(), kind=self.current.kind)
         cleared = self.board.clear_full_rows()
         self._apply_line_clear(cleared)
         self.can_hold = True
@@ -150,7 +150,7 @@ class Game:
             self.current.move(0, 1)
             distance += 1
 
-        self.board.lock(self.current.cells())
+        self.board.lock(self.current.cells(), kind=self.current.kind)
         cleared = self.board.clear_full_rows()
         self._apply_line_clear(cleared)
         self.can_hold = True

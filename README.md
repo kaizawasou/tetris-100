@@ -22,3 +22,8 @@ After `direnv allow`, entering this directory activates `.venv` automatically.
 Run:
 
 `pytest -q`
+
+## Color CLI Note
+
+- `python cli.py` is optimized for macOS Terminal / iTerm2 with ANSI color support.
+- If your terminal does not render colors correctly, run `python cli.py --no-color`.
