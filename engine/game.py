@@ -45,8 +45,64 @@ class Game:
             return False
         return True
 
+    def move(self, dx: int) -> bool:
+        if self.game_over:
+            return False
+        if self.current is None and not self.spawn_next():
+            return False
+        assert self.current is not None
+
+        next_cells = self.current.cells(dx=dx)
+        if not self.board.can_place(next_cells):
+            return False
+        self.current.move(dx, 0)
+        return True
+
+    def rotate_cw(self) -> bool:
+        if self.game_over:
+            return False
+        if self.current is None and not self.spawn_next():
+            return False
+        assert self.current is not None
+
+        self.current.rotate_cw()
+        if self.board.can_place(self.current.cells()):
+            return True
+        self.current.rotate_ccw()
+        return False
+
+    def soft_drop(self) -> bool:
+        if self.game_over:
+            return False
+        if self.current is None and not self.spawn_next():
+            return False
+        assert self.current is not None
+
+        next_cells = self.current.cells(dy=1)
+        if not self.board.can_place(next_cells):
+            return False
+        self.current.move(0, 1)
+        return True
+
+    def hard_drop(self) -> int:
+        if self.game_over:
+            return 0
+        if self.current is None and not self.spawn_next():
+            return 0
+        assert self.current is not None
+
+        distance = 0
+        while self.board.can_place(self.current.cells(dy=1)):
+            self.current.move(0, 1)
+            distance += 1
+
+        self.board.lock(self.current.cells())
+        self.lines_cleared += self.board.clear_full_rows()
+        self.current = None
+        self.spawn_next()
+        return distance
+
     def render(self) -> str:
         active = self.current.cells() if self.current is not None else ()
         lines = self.board.to_lines(active)
         return "\n".join(lines)
-
