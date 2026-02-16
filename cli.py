@@ -43,7 +43,7 @@ def main() -> None:
 
     game = Game()
     game.spawn_next()
-    print("Controls: A/D=move W=rotate S=soft drop Space=hard drop Q=quit")
+    print("Controls: A/D=move W=rotate S=soft drop Space=hard drop C=hold Q=quit")
     next_drop_at = time.monotonic() + game.drop_interval
 
     with KeyReader() as kr:
@@ -52,6 +52,7 @@ def main() -> None:
                 f"tick={i} score={game.score} level={game.level} "
                 f"lines={game.lines_cleared}"
             )
+            print("HOLD:", game.hold_kind or "-")
             print("NEXT:", " ".join(game.peek_next(3)))
             print(game.render())
             print("-" * game.board.width)
@@ -70,6 +71,8 @@ def main() -> None:
                     game.rotate_cw()
                 elif k == "s":
                     game.soft_drop()
+                elif k == "c":
+                    game.hold()
                 elif key == " ":
                     game.hard_drop()
                     next_drop_at = time.monotonic() + game.drop_interval

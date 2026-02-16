@@ -42,8 +42,9 @@ class Board:
         self.fixed = new_fixed
         return len(full_rows)
 
-    def to_lines(self, active_cells: Iterable[Coord] = ()) -> List[str]:
+    def to_lines(self, active_cells: Iterable[Coord] = (), ghost_cells: Iterable[Coord] = ()) -> List[str]:
         active = set(active_cells)
+        ghost = set(ghost_cells)
         lines: List[str] = []
         for y in range(self.height):
             row = []
@@ -52,8 +53,9 @@ class Board:
                     row.append("@")
                 elif (x, y) in self.fixed:
                     row.append("#")
+                elif (x, y) in ghost:
+                    row.append(":")
                 else:
                     row.append(".")
             lines.append("".join(row))
         return lines
-

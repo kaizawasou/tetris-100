@@ -19,6 +19,8 @@ class Game:
         self._rng = random.Random()
         self.bag: list[str] = []
         self.current: Optional[Piece] = None
+        self.hold_kind: Optional[str] = None
+        self.can_hold = True
         self.score = 0
         self.lines_cleared = 0
         self.level = 1
@@ -64,6 +66,9 @@ class Game:
 
     def spawn_next(self) -> bool:
         kind = self.next_kind()
+        return self._spawn_kind(kind)
+
+    def _spawn_kind(self, kind: str) -> bool:
         block_cls = BLOCKS[kind]
         x, y = block_cls.spawn_position(self.board.width)
         piece = Piece(kind=kind, x=x, y=y)
@@ -88,6 +93,7 @@ class Game:
         self.board.lock(self.current.cells())
         cleared = self.board.clear_full_rows()
         self._apply_line_clear(cleared)
+        self.can_hold = True
         self.current = None
         if not self.spawn_next():
             return False
@@ -147,11 +153,40 @@ class Game:
         self.board.lock(self.current.cells())
         cleared = self.board.clear_full_rows()
         self._apply_line_clear(cleared)
+        self.can_hold = True
         self.current = None
         self.spawn_next()
         return distance
 
+    def hold(self) -> bool:
+        if self.game_over or not self.can_hold:
+            return False
+        if self.current is None and not self.spawn_next():
+            return False
+        assert self.current is not None
+
+        current_kind = self.current.kind
+        if self.hold_kind is None:
+            self.hold_kind = current_kind
+            self.current = None
+            self.can_hold = False
+            return self.spawn_next()
+
+        swap_kind = self.hold_kind
+        self.hold_kind = current_kind
+        self.can_hold = False
+        return self._spawn_kind(swap_kind)
+
+    def ghost_cells(self) -> list[tuple[int, int]]:
+        if self.current is None:
+            return []
+        distance = 0
+        while self.board.can_place(self.current.cells(dy=distance + 1)):
+            distance += 1
+        return self.current.cells(dy=distance)
+
     def render(self) -> str:
         active = self.current.cells() if self.current is not None else ()
-        lines = self.board.to_lines(active)
+        ghost = self.ghost_cells()
+        lines = self.board.to_lines(active, ghost)
         return "\n".join(lines)
