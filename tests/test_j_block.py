@@ -2,7 +2,7 @@ from blocks.j_block import JBlock
 
 def test_color_is_set():
     b = JBlock()
-    assert b.color.startswith("#")
+    assert b.color == "#FFA500"
 
 def test_has_4_cells_each_rotation():
     b = JBlock()
