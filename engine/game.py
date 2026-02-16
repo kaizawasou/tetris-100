@@ -8,14 +8,36 @@ from engine.piece import BLOCKS, Piece
 
 
 class Game:
+    BASE_DROP_INTERVAL = 0.6
+    DROP_INTERVAL_STEP = 0.05
+    MIN_DROP_INTERVAL = 0.1
+    LINE_SCORES = {1: 100, 2: 300, 3: 500, 4: 800}
+
     def __init__(self, width: int = 10, height: int = 20) -> None:
         self.board = Board(width=width, height=height)
         self._all_kinds = ["L", "J", "O", "I", "T", "S", "Z"]
         self._rng = random.Random()
         self.bag: list[str] = []
         self.current: Optional[Piece] = None
+        self.score = 0
         self.lines_cleared = 0
+        self.level = 1
+        self.drop_interval = self._compute_drop_interval()
         self.game_over = False
+
+    def _compute_drop_interval(self) -> float:
+        return max(
+            self.MIN_DROP_INTERVAL,
+            self.BASE_DROP_INTERVAL - self.DROP_INTERVAL_STEP * (self.level - 1),
+        )
+
+    def _apply_line_clear(self, cleared: int) -> None:
+        if cleared <= 0:
+            return
+        self.score += self.LINE_SCORES.get(cleared, 0) * self.level
+        self.lines_cleared += cleared
+        self.level = self.lines_cleared // 10 + 1
+        self.drop_interval = self._compute_drop_interval()
 
     def _refill_bag(self) -> None:
         kinds = list(self._all_kinds)
@@ -64,7 +86,8 @@ class Game:
             return True
 
         self.board.lock(self.current.cells())
-        self.lines_cleared += self.board.clear_full_rows()
+        cleared = self.board.clear_full_rows()
+        self._apply_line_clear(cleared)
         self.current = None
         if not self.spawn_next():
             return False
@@ -122,7 +145,8 @@ class Game:
             distance += 1
 
         self.board.lock(self.current.cells())
-        self.lines_cleared += self.board.clear_full_rows()
+        cleared = self.board.clear_full_rows()
+        self._apply_line_clear(cleared)
         self.current = None
         self.spawn_next()
         return distance

@@ -4,6 +4,7 @@ import argparse
 import select
 import sys
 import termios
+import time
 import tty
 from typing import Optional
 
@@ -43,10 +44,14 @@ def main() -> None:
     game = Game()
     game.spawn_next()
     print("Controls: A/D=move W=rotate S=soft drop Space=hard drop Q=quit")
+    next_drop_at = time.monotonic() + game.drop_interval
 
     with KeyReader() as kr:
         for i in range(args.ticks):
-            print(f"tick={i} lines={game.lines_cleared}")
+            print(
+                f"tick={i} score={game.score} level={game.level} "
+                f"lines={game.lines_cleared}"
+            )
             print("NEXT:", " ".join(game.peek_next(3)))
             print(game.render())
             print("-" * game.board.width)
@@ -67,10 +72,14 @@ def main() -> None:
                     game.soft_drop()
                 elif key == " ":
                     game.hard_drop()
+                    next_drop_at = time.monotonic() + game.drop_interval
 
-            if not game.tick():
-                print("GAME OVER")
-                break
+            now = time.monotonic()
+            if now >= next_drop_at:
+                if not game.tick():
+                    print("GAME OVER")
+                    break
+                next_drop_at = now + game.drop_interval
 
 
 if __name__ == "__main__":
