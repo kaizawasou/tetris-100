@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from itertools import cycle
+import random
 from typing import Optional
 
 from engine.board import Board
@@ -10,13 +10,38 @@ from engine.piece import BLOCKS, Piece
 class Game:
     def __init__(self, width: int = 10, height: int = 20) -> None:
         self.board = Board(width=width, height=height)
-        self._kinds = cycle(["L", "J", "O", "I", "T", "S", "Z"])
+        self._all_kinds = ["L", "J", "O", "I", "T", "S", "Z"]
+        self._rng = random.Random()
+        self.bag: list[str] = []
         self.current: Optional[Piece] = None
         self.lines_cleared = 0
         self.game_over = False
 
+    def _refill_bag(self) -> None:
+        kinds = list(self._all_kinds)
+        self._rng.shuffle(kinds)
+        self.bag.extend(kinds)
+
+    def next_kind(self) -> str:
+        if not self.bag:
+            self._refill_bag()
+        return self.bag.pop(0)
+
+    def peek_next(self, n: int = 3) -> list[str]:
+        if n <= 0:
+            return []
+
+        preview = list(self.bag)
+        state = self._rng.getstate()
+        while len(preview) < n:
+            kinds = list(self._all_kinds)
+            self._rng.shuffle(kinds)
+            preview.extend(kinds)
+        self._rng.setstate(state)
+        return preview[:n]
+
     def spawn_next(self) -> bool:
-        kind = next(self._kinds)
+        kind = self.next_kind()
         block_cls = BLOCKS[kind]
         x, y = block_cls.spawn_position(self.board.width)
         piece = Piece(kind=kind, x=x, y=y)

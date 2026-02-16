@@ -47,6 +47,7 @@ def main() -> None:
     with KeyReader() as kr:
         for i in range(args.ticks):
             print(f"tick={i} lines={game.lines_cleared}")
+            print("NEXT:", " ".join(game.peek_next(3)))
             print(game.render())
             print("-" * game.board.width)
 
