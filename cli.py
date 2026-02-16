@@ -13,6 +13,7 @@ from engine.piece import BLOCKS
 
 ANSI_RESET = "\x1b[0m"
 ANSI_CLEAR_HOME = "\x1b[2J\x1b[H"
+CONTROLS_LINE = "Controls: A/D move | W rotate | S soft | Space hard | C hold | P pause | Q quit"
 
 
 class KeyReader:
@@ -42,13 +43,13 @@ class KeyReader:
 def hex_to_ansi_code(hex_color: str) -> int:
     normalized = hex_color.strip().lower()
     fixed = {
-        "#ff0000": 31,  # red
-        "#00ff00": 32,  # green
-        "#ffff00": 33,  # yellow
-        "#ffa500": 33,  # orange -> yellow
-        "#0000ff": 34,  # blue
-        "#00ffff": 36,  # cyan
-        "#800080": 35,  # magenta
+        "#ff0000": 31,
+        "#00ff00": 32,
+        "#ffff00": 33,
+        "#ffa500": 33,
+        "#0000ff": 34,
+        "#00ffff": 36,
+        "#800080": 35,
     }
     return fixed.get(normalized, 37)
 
@@ -66,66 +67,52 @@ def colorize(text: str, code: int, *, dim: bool = False, enabled: bool = True) -
 
 def build_frame(game: Game, paused: bool = False, color: bool = True) -> str:
     width = game.board.width
-    height = game.board.height
     active = set(game.current.cells() if game.current else [])
     ghost = set(game.ghost_cells())
     ansi = kind_ansi_map()
     active_kind = game.current.kind if game.current else None
 
-    board_lines = ["┌" + "─" * width + "┐"]
-    for y in range(height):
-        row_cells = []
+    board_rows = []
+    for y in range(game.board.height):
+        row = []
         for x in range(width):
             coord = (x, y)
             if coord in active:
                 code = ansi.get(active_kind or "", 37)
-                row_cells.append(colorize("■", code, enabled=color))
+                row.append(colorize("■", code, enabled=color))
             elif coord in game.board.fixed:
                 fixed_kind = game.board.get_fixed_kind(x, y)
                 code = ansi.get(fixed_kind or "", 37)
-                row_cells.append(colorize("■", code, enabled=color))
+                row.append(colorize("■", code, enabled=color))
             elif coord in ghost:
                 code = ansi.get(active_kind or "", 37)
-                row_cells.append(colorize("·", code, dim=True, enabled=color))
+                row.append(colorize("·", code, dim=True, enabled=color))
             else:
-                row_cells.append(" ")
-        board_lines.append("│" + "".join(row_cells) + "│")
-    board_lines.append("└" + "─" * width + "┘")
+                row.append(" ")
+        board_rows.append("".join(row))
 
-    next3 = game.peek_next(3)
-    panel = [
-        "TETRIS-100",
-        "",
-        f"SCORE: {game.score}",
-        f"LEVEL: {game.level}",
-        f"LINES: {game.lines_cleared}",
-        "",
-        f"HOLD: {game.hold_kind or '-'}",
-        f"NEXT: {' '.join(next3)}",
-        "",
-        "Controls",
-        "A/D : Move",
-        "W   : Rotate",
-        "S   : Soft drop",
-        "SPC : Hard drop",
-        "C   : Hold",
-        "P   : Pause",
-        "Q   : Quit",
-    ]
+    header1 = f"SCORE {game.score:06d}  LV {game.level:02d}  LINES {game.lines_cleared:02d}"
+    header2 = f"NEXT: {' '.join(game.peek_next(3))}   HOLD: {game.hold_kind or '-'}"
+    event = game.last_event or "-"
     if paused:
-        panel.append("")
-        panel.append("PAUSED")
+        event = f"PAUSED | {event}"
     if game.game_over:
-        panel.append("")
-        panel.append("GAME OVER")
+        event = f"GAME OVER | {event}"
+    header3 = f"EVENT: {event}"
 
-    total = max(len(board_lines), len(panel))
-    combined = []
-    for i in range(total):
-        left = board_lines[i] if i < len(board_lines) else " " * (width + 2)
-        right = panel[i] if i < len(panel) else ""
-        combined.append(f"{left}  {right}")
-    return "\n".join(combined)
+    inner_width = max(width, len(header1), len(header2), len(header3))
+    lines = [
+        "┌" + "─" * inner_width + "┐",
+        "│" + header1.ljust(inner_width) + "│",
+        "│" + header2.ljust(inner_width) + "│",
+        "│" + header3.ljust(inner_width) + "│",
+        "├" + "─" * inner_width + "┤",
+    ]
+    for row in board_rows:
+        lines.append("│" + row + " " * (inner_width - width) + "│")
+    lines.append("└" + "─" * inner_width + "┘")
+    lines.append(CONTROLS_LINE)
+    return "\n".join(lines)
 
 
 def main() -> None:
@@ -138,12 +125,14 @@ def main() -> None:
     game = Game()
     game.spawn_next()
     paused = False
+    use_ansi = (not args.no_color) and sys.stdout.isatty()
     next_drop_at = time.monotonic() + game.drop_interval
 
     with KeyReader() as kr:
         for _ in range(args.ticks):
-            frame = build_frame(game, paused=paused, color=not args.no_color)
-            sys.stdout.write(ANSI_CLEAR_HOME + frame + "\n")
+            frame = build_frame(game, paused=paused, color=use_ansi)
+            prefix = ANSI_CLEAR_HOME if use_ansi else ""
+            sys.stdout.write(prefix + frame + "\n")
             sys.stdout.flush()
 
             key = kr.read_key(args.interval)
@@ -173,8 +162,9 @@ def main() -> None:
             now = time.monotonic()
             if (not paused) and now >= next_drop_at:
                 if not game.tick():
-                    frame = build_frame(game, paused=False, color=not args.no_color)
-                    sys.stdout.write(ANSI_CLEAR_HOME + frame + "\n")
+                    frame = build_frame(game, paused=False, color=use_ansi)
+                    prefix = ANSI_CLEAR_HOME if use_ansi else ""
+                    sys.stdout.write(prefix + frame + "\n")
                     sys.stdout.flush()
                     break
                 next_drop_at = now + game.drop_interval

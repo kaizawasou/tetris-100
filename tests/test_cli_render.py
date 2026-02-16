@@ -14,9 +14,17 @@ def test_build_frame_contains_panels_and_border():
 
     frame = build_frame(game, paused=False, color=False)
 
-    assert "SCORE:" in frame
-    assert "LEVEL:" in frame
-    assert "LINES:" in frame
+    assert "SCORE " in frame
+    assert "LV " in frame
+    assert "LINES " in frame
     assert "NEXT:" in frame
     assert "HOLD:" in frame
+    assert "EVENT:" in frame
     assert "┌" in frame and "┘" in frame
+
+
+def test_build_frame_no_color_has_no_ansi_escape():
+    game = Game()
+    game.spawn_next()
+    frame = build_frame(game, paused=False, color=False)
+    assert "\x1b[" not in frame

@@ -26,6 +26,7 @@ class Game:
         self.level = 1
         self.drop_interval = self._compute_drop_interval()
         self.game_over = False
+        self.last_event = ""
 
     def _compute_drop_interval(self) -> float:
         return max(
@@ -64,11 +65,11 @@ class Game:
         self._rng.setstate(state)
         return preview[:n]
 
-    def spawn_next(self) -> bool:
+    def spawn_next(self, announce: bool = True) -> bool:
         kind = self.next_kind()
-        return self._spawn_kind(kind)
+        return self._spawn_kind(kind, announce=announce)
 
-    def _spawn_kind(self, kind: str) -> bool:
+    def _spawn_kind(self, kind: str, announce: bool = True) -> bool:
         block_cls = BLOCKS[kind]
         x, y = block_cls.spawn_position(self.board.width)
         piece = Piece(kind=kind, x=x, y=y)
@@ -77,6 +78,8 @@ class Game:
             self.current = None
             return False
         self.current = piece
+        if announce:
+            self.last_event = f"spawn {kind}"
         return True
 
     def tick(self) -> bool:
@@ -94,9 +97,11 @@ class Game:
         cleared = self.board.clear_full_rows()
         self._apply_line_clear(cleared)
         self.can_hold = True
+        event = f"cleared {cleared} line(s)" if cleared > 0 else "locked"
         self.current = None
-        if not self.spawn_next():
+        if not self.spawn_next(announce=False):
             return False
+        self.last_event = event
         return True
 
     def move(self, dx: int) -> bool:
@@ -155,7 +160,8 @@ class Game:
         self._apply_line_clear(cleared)
         self.can_hold = True
         self.current = None
-        self.spawn_next()
+        self.spawn_next(announce=False)
+        self.last_event = f"hard drop {distance}"
         return distance
 
     def hold(self) -> bool:
@@ -170,12 +176,18 @@ class Game:
             self.hold_kind = current_kind
             self.current = None
             self.can_hold = False
-            return self.spawn_next()
+            ok = self.spawn_next(announce=False)
+            if ok:
+                self.last_event = f"hold {current_kind}"
+            return ok
 
         swap_kind = self.hold_kind
         self.hold_kind = current_kind
         self.can_hold = False
-        return self._spawn_kind(swap_kind)
+        ok = self._spawn_kind(swap_kind, announce=False)
+        if ok:
+            self.last_event = f"hold swap {swap_kind}"
+        return ok
 
     def ghost_cells(self) -> list[tuple[int, int]]:
         if self.current is None:
