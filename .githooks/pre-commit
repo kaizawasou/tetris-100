@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TS="$(date '+%Y%m%d_%H%M%S')"
-OUT="/Users/sou/growth-os-docs/archive/logs/precommit_quality_gate_${TS}.txt"
-QG="/Users/sou/growth-os-docs/_ops/quality_gate_min.sh"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="$ROOT/ops/logs/precommit_quality_gate_${TS}.txt"
+QG="$ROOT/scripts/quality_gate_min.sh"
 
 if [ ! -x "$QG" ]; then
   echo "[pre-commit] ERROR: quality gate not executable: $QG" | tee -a "$OUT" >/dev/null

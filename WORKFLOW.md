@@ -304,7 +304,8 @@ pytest -q
 
 - agent.md（このリポジトリのルール）
 - README.md（セットアップ手順）
-- ~/growth-os-docs/_ops/GIT_WORKFLOW_STANDARD.md（全体共通ルール）
+- scripts/quality_gate_min.sh（このリポジトリの品質ゲート）
+- ops/logs/（このリポジトリの証跡ログ）
 
 ---
 
